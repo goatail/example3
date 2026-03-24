@@ -1927,6 +1927,9 @@ static UIColor *ESSearchFieldWellColor(void) {
     pageStack.distribution = UIStackViewDistributionFill;
     pageStack.alignment = UIStackViewAlignmentFill;
 
+    // 必须先让 pageStack 进入 pageScroll 子树，再约束 page.width 到 frameLayoutGuide，否则二者无共同祖先会抛 Auto Layout 异常
+    [self.pageScroll addSubview:pageStack];
+
     NSMutableArray<UICollectionView *> *tabs = [NSMutableArray array];
     for (NSInteger i = 0; i < (NSInteger)self.categories.count; i++) {
         UIView *page = [UIView new];
@@ -1951,8 +1954,6 @@ static UIColor *ESSearchFieldWellColor(void) {
         [tabs addObject:cv];
     }
     self.categoryCollections = tabs;
-
-    [self.pageScroll addSubview:pageStack];
     [self.view addSubview:self.searchEntryBar];
     [self.view addSubview:self.seg];
     [self.view addSubview:self.pageScroll];
