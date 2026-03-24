@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+example3 in example3, no dependencies
