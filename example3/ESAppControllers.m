@@ -1369,6 +1369,8 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
     UIButton *_filterBtn;
     NSString *_statusFilter;
     UIView *_headerWrap;
+    /// 仅在表头宽度变化时更新 frame 并赋值 tableHeaderView，避免每次 layout 重复赋值导致布局死循环卡死
+    CGFloat _orderListHeaderAppliedWidth;
 }
 
 - (void)viewDidLoad {
@@ -1392,6 +1394,7 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     [self.tableView registerClass:[ESOrderRichCell class] forCellReuseIdentifier:@"rich"];
     [self es_updateFilterTitle];
+    _orderListHeaderAppliedWidth = -1;
     [self es_reloadOrderList];
 }
 
@@ -1401,6 +1404,10 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
     if (w < 1 || !_headerWrap) {
         return;
     }
+    if (fabs(w - _orderListHeaderAppliedWidth) < 1.0) {
+        return;
+    }
+    _orderListHeaderAppliedWidth = w;
     _headerWrap.frame = CGRectMake(0, 0, w, 96);
     _search.frame = CGRectMake(0, 0, w, 56);
     _filterBtn.frame = CGRectMake(16, 58, w - 32, 32);
