@@ -2935,6 +2935,8 @@ static double ESCheckoutShippingFee(void) {
     UIScrollView *scroll = [UIScrollView new];
     scroll.translatesAutoresizingMaskIntoConstraints = NO;
     scroll.alwaysBounceVertical = YES;
+    scroll.delaysContentTouches = NO;
+    scroll.canCancelContentTouches = YES;
     [self.view addSubview:scroll];
 
     UIStackView *root = [[UIStackView alloc] init];
@@ -2961,14 +2963,23 @@ static double ESCheckoutShippingFee(void) {
     [root addArrangedSubview:[self es_orderSectionCard]];
     [root addArrangedSubview:[self es_featuresCard]];
 
-    UIButton *logout = [UIButton buttonWithType:UIButtonTypeSystem];
+    // 与 example `ProfileView` 中 `Button("退出登录", role: .destructive)` + `frame(maxWidth: .infinity)` + `padding(.vertical, 8)` 一致
+    UIButton *logout = [UIButton buttonWithType:UIButtonTypeCustom];
+    logout.translatesAutoresizingMaskIntoConstraints = NO;
     [logout setTitle:@"退出登录" forState:UIControlStateNormal];
+    logout.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     if (@available(iOS 13.0, *)) {
         [logout setTitleColor:UIColor.systemRedColor forState:UIControlStateNormal];
+        [logout setTitleColor:[UIColor.systemRedColor colorWithAlphaComponent:0.45] forState:UIControlStateHighlighted];
     } else {
         [logout setTitleColor:UIColor.redColor forState:UIControlStateNormal];
+        [logout setTitleColor:[UIColor.redColor colorWithAlphaComponent:0.45] forState:UIControlStateHighlighted];
     }
+    logout.backgroundColor = UIColor.clearColor;
+    logout.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    logout.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
     [logout addTarget:self action:@selector(es_logout) forControlEvents:UIControlEventTouchUpInside];
+    [logout.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
     [root addArrangedSubview:logout];
 }
 
@@ -3009,8 +3020,6 @@ static double ESCheckoutShippingFee(void) {
     row.spacing = 16;
     row.alignment = UIStackViewAlignmentCenter;
     row.translatesAutoresizingMaskIntoConstraints = NO;
-    row.layoutMargins = UIEdgeInsetsMake(16, 16, 16, 16);
-    row.layoutMarginsRelativeArrangement = YES;
 
     UIImageView *av = [[UIImageView alloc] initWithImage:ESSystemImage(@"person.circle.fill")];
     av.translatesAutoresizingMaskIntoConstraints = NO;
@@ -3046,11 +3055,12 @@ static double ESCheckoutShippingFee(void) {
     [row addArrangedSubview:av];
     [row addArrangedSubview:col];
     [card addSubview:row];
+    const CGFloat cardPad = 16;
     [NSLayoutConstraint activateConstraints:@[
-        [row.topAnchor constraintEqualToAnchor:card.topAnchor],
-        [row.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
-        [row.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
-        [row.bottomAnchor constraintEqualToAnchor:card.bottomAnchor]
+        [row.topAnchor constraintEqualToAnchor:card.topAnchor constant:cardPad],
+        [row.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:cardPad],
+        [row.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-cardPad],
+        [row.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-cardPad]
     ]];
     return card;
 }
@@ -3078,6 +3088,8 @@ static double ESCheckoutShippingFee(void) {
     UIScrollView *hscroll = [UIScrollView new];
     hscroll.translatesAutoresizingMaskIntoConstraints = NO;
     hscroll.showsHorizontalScrollIndicator = NO;
+    hscroll.delaysContentTouches = NO;
+    hscroll.canCancelContentTouches = YES;
     UIStackView *pills = [[UIStackView alloc] init];
     pills.axis = UILayoutConstraintAxisHorizontal;
     pills.spacing = 20;
@@ -3087,11 +3099,13 @@ static double ESCheckoutShippingFee(void) {
 
     for (NSUInteger i = 0; i < statuses.count; i++) {
         NSString *st = statuses[i];
-        UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
-        b.tag = (NSInteger)i;
-        [b addTarget:self action:@selector(es_tapOrderPill:) forControlEvents:UIControlEventTouchUpInside];
-        [b.heightAnchor constraintEqualToConstant:56].active = YES;
-        [b.widthAnchor constraintGreaterThanOrEqualToConstant:52].active = YES;
+        // 与 Swift `orderPill` + `.buttonStyle(.plain)` 一致：整块区域可点；勿用仅 center 的 UIButton，否则宽 52 时文字溢出、点不到
+        UIView *pillWrap = [UIView new];
+        pillWrap.translatesAutoresizingMaskIntoConstraints = NO;
+        pillWrap.tag = (NSInteger)i;
+        pillWrap.userInteractionEnabled = YES;
+        UITapGestureRecognizer *pillTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(es_onTapOrderPillWrap:)];
+        [pillWrap addGestureRecognizer:pillTap];
 
         UILabel *cnt = [UILabel new];
         cnt.font = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
@@ -3109,13 +3123,17 @@ static double ESCheckoutShippingFee(void) {
         pill.axis = UILayoutConstraintAxisVertical;
         pill.spacing = 4;
         pill.alignment = UIStackViewAlignmentCenter;
-        [b addSubview:pill];
         pill.translatesAutoresizingMaskIntoConstraints = NO;
+        [pillWrap addSubview:pill];
         [NSLayoutConstraint activateConstraints:@[
-            [pill.centerXAnchor constraintEqualToAnchor:b.centerXAnchor],
-            [pill.centerYAnchor constraintEqualToAnchor:b.centerYAnchor]
+            [pill.topAnchor constraintEqualToAnchor:pillWrap.topAnchor constant:8],
+            [pill.bottomAnchor constraintEqualToAnchor:pillWrap.bottomAnchor constant:-8],
+            [pill.leadingAnchor constraintEqualToAnchor:pillWrap.leadingAnchor constant:12],
+            [pill.trailingAnchor constraintEqualToAnchor:pillWrap.trailingAnchor constant:-12],
+            [pillWrap.heightAnchor constraintGreaterThanOrEqualToConstant:56],
+            [pillWrap.widthAnchor constraintGreaterThanOrEqualToConstant:72]
         ]];
-        [pills addArrangedSubview:b];
+        [pills addArrangedSubview:pillWrap];
     }
 
     [hscroll addSubview:pills];
@@ -3136,38 +3154,61 @@ static double ESCheckoutShippingFee(void) {
     }
     [line.heightAnchor constraintEqualToConstant:1.0 / [UIScreen mainScreen].scale].active = YES;
 
-    UIButton *myOrders = [UIButton buttonWithType:UIButtonTypeSystem];
-    myOrders.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
-    myOrders.contentEdgeInsets = UIEdgeInsetsMake(16, 16, 16, 16);
-    [myOrders setTitle:@"我的订单" forState:UIControlStateNormal];
+    // 标题靠左、箭头靠右：勿用 ForceRightToLeft（会把整块内容挤到右侧）
+    UILabel *moTitle = [UILabel new];
+    moTitle.translatesAutoresizingMaskIntoConstraints = NO;
+    moTitle.text = @"我的订单";
+    moTitle.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     if (@available(iOS 13.0, *)) {
-        [myOrders setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
-        UIImage *ch = [ESSystemImage(@"chevron.right") imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        [myOrders setImage:ch forState:UIControlStateNormal];
-        myOrders.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
-        myOrders.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, -8);
-        myOrders.tintColor = [UIColor colorWithWhite:0.55 alpha:1];
+        moTitle.textColor = UIColor.labelColor;
     } else {
-        [myOrders setTitle:@"我的订单  ›" forState:UIControlStateNormal];
-        [myOrders setTitleColor:UIColor.darkTextColor forState:UIControlStateNormal];
+        moTitle.textColor = UIColor.darkTextColor;
     }
-    [myOrders addTarget:self action:@selector(es_openMyOrders) forControlEvents:UIControlEventTouchUpInside];
+    UIView *moSpacer = [UIView new];
+    moSpacer.translatesAutoresizingMaskIntoConstraints = NO;
+    [moSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    UIStackView *moRow = [[UIStackView alloc] initWithArrangedSubviews:@[ moTitle, moSpacer ]];
+    moRow.axis = UILayoutConstraintAxisHorizontal;
+    moRow.alignment = UIStackViewAlignmentCenter;
+    moRow.spacing = 8;
+    moRow.translatesAutoresizingMaskIntoConstraints = NO;
+    moRow.layoutMargins = UIEdgeInsetsMake(16, 16, 16, 16);
+    moRow.layoutMarginsRelativeArrangement = YES;
+    moRow.userInteractionEnabled = YES;
+    [moRow addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(es_onTapMyOrdersRow:)]];
+    UIImage *chImg = ESSystemImage(@"chevron.right");
+    if (chImg) {
+        UIImageView *chev = [[UIImageView alloc] initWithImage:[chImg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+        chev.translatesAutoresizingMaskIntoConstraints = NO;
+        chev.contentMode = UIViewContentModeScaleAspectFit;
+        if (@available(iOS 13.0, *)) {
+            chev.tintColor = [UIColor colorWithWhite:0.55 alpha:1];
+        }
+        [moRow addArrangedSubview:chev];
+        [chev.widthAnchor constraintEqualToConstant:11].active = YES;
+        [chev.heightAnchor constraintEqualToConstant:14].active = YES;
+    } else {
+        UILabel *chevText = [UILabel new];
+        chevText.text = @"›";
+        chevText.font = [UIFont systemFontOfSize:20 weight:UIFontWeightRegular];
+        chevText.textColor = [UIColor colorWithWhite:0.55 alpha:1];
+        [moRow addArrangedSubview:chevText];
+    }
 
     [v addArrangedSubview:secPad];
     [v addArrangedSubview:hscroll];
     [v addArrangedSubview:line];
-    [v addArrangedSubview:myOrders];
+    [v addArrangedSubview:moRow];
 
-    [hscroll.heightAnchor constraintEqualToConstant:72].active = YES;
+    // 与内容高度一致：上下 layoutMargins 各 10 + 胶囊至少 56，避免裁切导致点不到
+    [hscroll.heightAnchor constraintEqualToConstant:80].active = YES;
 
     [card addSubview:v];
     [NSLayoutConstraint activateConstraints:@[
         [v.topAnchor constraintEqualToAnchor:card.topAnchor],
         [v.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
         [v.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
-        [v.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
-        [line.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:16],
-        [line.trailingAnchor constraintEqualToAnchor:card.trailingAnchor]
+        [v.bottomAnchor constraintEqualToAnchor:card.bottomAnchor]
     ]];
     return card;
 }
@@ -3180,14 +3221,24 @@ static double ESCheckoutShippingFee(void) {
     }
 }
 
-- (void)es_tapOrderPill:(UIButton *)sender {
-    NSArray<NSString *> *statuses = @[ @"待付款", @"待发货", @"待收货", @"待评价", @"退款/售后" ];
-    if (sender.tag < 0 || (NSUInteger)sender.tag >= statuses.count) {
+- (void)es_onTapOrderPillWrap:(UITapGestureRecognizer *)g {
+    UIView *wrap = g.view;
+    if (wrap.tag < 0) {
         return;
     }
-    NSString *st = statuses[(NSUInteger)sender.tag];
+    NSUInteger idx = (NSUInteger)wrap.tag;
+    NSArray<NSString *> *statuses = @[ @"待付款", @"待发货", @"待收货", @"待评价", @"退款/售后" ];
+    if (idx >= statuses.count) {
+        return;
+    }
+    NSString *st = statuses[idx];
     ESOrdersByStatusViewController *vc = [[ESOrdersByStatusViewController alloc] initWithOrderStatus:st title:st];
     [self.navigationController pushViewController:vc animated:YES];
+}
+
+- (void)es_onTapMyOrdersRow:(UITapGestureRecognizer *)gr {
+    (void)gr;
+    [self es_openMyOrders];
 }
 
 - (void)es_openMyOrders {
@@ -3248,11 +3299,7 @@ static double ESCheckoutShippingFee(void) {
         [v.topAnchor constraintEqualToAnchor:card.topAnchor],
         [v.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
         [v.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
-        [v.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
-        [d1.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:16],
-        [d1.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
-        [d2.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:16],
-        [d2.trailingAnchor constraintEqualToAnchor:card.trailingAnchor]
+        [v.bottomAnchor constraintEqualToAnchor:card.bottomAnchor]
     ]];
     return card;
 }
@@ -3283,9 +3330,27 @@ static double ESCheckoutShippingFee(void) {
     [self presentViewController:ac animated:YES completion:nil];
 }
 
+/// 与 Swift `MainTabView` 注入 `onLogout` 一致；若未设置 weak root，从父链查找根 `ViewController`
+- (nullable ViewController *)es_profileAppRoot {
+    if (self.root) {
+        return self.root;
+    }
+    UIViewController *vc = self.parentViewController;
+    while (vc) {
+        if ([vc isKindOfClass:[ViewController class]]) {
+            return (ViewController *)vc;
+        }
+        vc = vc.parentViewController;
+    }
+    return nil;
+}
+
 - (void)es_logout {
     [ESStore.shared logout];
-    [self.root showAuth];
+    ViewController *r = [self es_profileAppRoot];
+    if (r) {
+        [r showAuth];
+    }
 }
 
 @end
