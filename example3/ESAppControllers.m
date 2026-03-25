@@ -127,6 +127,8 @@ static UIButton *ESAuthPrimaryButton(NSString *title) {
 @interface ESCheckoutViewController ()
 @property (nonatomic, strong, nullable) ESAddress *selected;
 @property (nonatomic, strong) UIView *submitFooter;
+/// 底部「提交订单」按钮（用 frame 布局，避免 tableFooterView 与 Auto Layout 混用触发约束异常）
+@property (nonatomic, strong) UIButton *submitOrderButton;
 @end
 
 void ESAlert(UIViewController *vc, NSString *msg) {
@@ -2420,7 +2422,7 @@ static double ESCheckoutShippingFee(void) {
     self.submitFooter = [UIView new];
     self.submitFooter.backgroundColor = ESBackgroundColor();
     UIButton *submit = [UIButton buttonWithType:UIButtonTypeSystem];
-    submit.translatesAutoresizingMaskIntoConstraints = NO;
+    self.submitOrderButton = submit;
     [submit setTitle:@"提交订单" forState:UIControlStateNormal];
     [submit setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     submit.backgroundColor = ESAuthPrimaryColor();
@@ -2428,14 +2430,6 @@ static double ESCheckoutShippingFee(void) {
     submit.layer.masksToBounds = YES;
     [submit addTarget:self action:@selector(onSubmit) forControlEvents:UIControlEventTouchUpInside];
     [self.submitFooter addSubview:submit];
-    CGFloat pad = 16;
-    [NSLayoutConstraint activateConstraints:@[
-        [submit.topAnchor constraintEqualToAnchor:self.submitFooter.topAnchor constant:pad],
-        [submit.leadingAnchor constraintEqualToAnchor:self.submitFooter.leadingAnchor constant:pad],
-        [submit.trailingAnchor constraintEqualToAnchor:self.submitFooter.trailingAnchor constant:-pad],
-        [submit.bottomAnchor constraintEqualToAnchor:self.submitFooter.bottomAnchor constant:-pad],
-        [submit.heightAnchor constraintEqualToConstant:48]
-    ]];
     self.tableView.tableFooterView = self.submitFooter;
     self.tableView.estimatedRowHeight = 56;
     self.tableView.rowHeight = UITableViewAutomaticDimension;
@@ -2448,9 +2442,15 @@ static double ESCheckoutShippingFee(void) {
         return;
     }
     const CGFloat footerPad = 16;
-    CGFloat h = footerPad * 2 + 48 + self.view.safeAreaInsets.bottom;
-    self.submitFooter.frame = CGRectMake(0, 0, w, MAX(h, 88));
-    self.tableView.tableFooterView = self.submitFooter;
+    const CGFloat btnH = 48;
+    CGFloat bottomInset = self.view.safeAreaInsets.bottom;
+    CGFloat fh = footerPad + btnH + footerPad + bottomInset;
+    CGRect f = CGRectMake(0, 0, w, MAX(fh, 88));
+    if (!CGRectEqualToRect(self.submitFooter.frame, f)) {
+        self.submitFooter.frame = f;
+        self.submitOrderButton.frame = CGRectMake(footerPad, footerPad, w - footerPad * 2, btnH);
+        self.tableView.tableFooterView = self.submitFooter;
+    }
 }
 
 - (void)es_back {
@@ -2856,7 +2856,9 @@ static double ESCheckoutShippingFee(void) {
             [s reloadCart];
         }];
     };
-    [self presentViewController:wrap animated:YES completion:nil];
+    // 从导航控制器 present，避免购物车 Tab 隐藏了导航栏时偶发的展示上下文问题
+    UIViewController *presenter = self.navigationController ?: self;
+    [presenter presentViewController:wrap animated:YES completion:nil];
 }
 
 - (void)reloadCart {
