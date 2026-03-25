@@ -994,6 +994,7 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
 
 @interface ESAddressListCell : UITableViewCell
 @property (nonatomic, copy, nullable) void (^onSetDefault)(void);
+@property (nonatomic, copy, nullable) void (^onDelete)(void);
 - (void)configureWithAddress:(ESAddress *)addr selectMode:(BOOL)selectMode;
 @end
 
@@ -1002,6 +1003,8 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
     UILabel *_badge;
     UILabel *_addr;
     UIButton *_setDef;
+    UIButton *_delBtn;
+    UIStackView *_actionsRow;
 }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
@@ -1043,13 +1046,36 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
         [_setDef addTarget:self action:@selector(es_tapSetDef) forControlEvents:UIControlEventTouchUpInside];
         _setDef.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
 
+        _delBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        _delBtn.translatesAutoresizingMaskIntoConstraints = NO;
+        [_delBtn setTitle:@"删除" forState:UIControlStateNormal];
+        _delBtn.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleCaption1];
+        if (@available(iOS 13.0, *)) {
+            [_delBtn setTitleColor:UIColor.systemRedColor forState:UIControlStateNormal];
+        } else {
+            [_delBtn setTitleColor:UIColor.redColor forState:UIControlStateNormal];
+        }
+        [_delBtn addTarget:self action:@selector(es_tapDelete) forControlEvents:UIControlEventTouchUpInside];
+        _delBtn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentRight;
+
+        UIView *flex = [UIView new];
+        flex.translatesAutoresizingMaskIntoConstraints = NO;
+        [flex setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+
+        _actionsRow = [[UIStackView alloc] initWithArrangedSubviews:@[ _setDef, flex, _delBtn ]];
+        _actionsRow.translatesAutoresizingMaskIntoConstraints = NO;
+        _actionsRow.axis = UILayoutConstraintAxisHorizontal;
+        _actionsRow.spacing = 8;
+        _actionsRow.alignment = UIStackViewAlignmentCenter;
+        _actionsRow.distribution = UIStackViewDistributionFill;
+
         UIStackView *top = [[UIStackView alloc] initWithArrangedSubviews:@[ _namePhone, _badge ]];
         top.translatesAutoresizingMaskIntoConstraints = NO;
         top.axis = UILayoutConstraintAxisHorizontal;
         top.spacing = 8;
         top.alignment = UIStackViewAlignmentCenter;
 
-        UIStackView *v = [[UIStackView alloc] initWithArrangedSubviews:@[ top, _addr, _setDef ]];
+        UIStackView *v = [[UIStackView alloc] initWithArrangedSubviews:@[ top, _addr, _actionsRow ]];
         v.translatesAutoresizingMaskIntoConstraints = NO;
         v.axis = UILayoutConstraintAxisVertical;
         v.spacing = 6;
@@ -1071,11 +1097,21 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
     }
 }
 
+- (void)es_tapDelete {
+    if (self.onDelete) {
+        self.onDelete();
+    }
+}
+
 - (void)configureWithAddress:(ESAddress *)addr selectMode:(BOOL)selectMode {
     _namePhone.text = [NSString stringWithFormat:@"%@  %@", addr.name ?: @"", addr.phone ?: @""];
     _addr.text = [addr fullAddressString].length ? [addr fullAddressString] : [addr fullText];
     _badge.hidden = !addr.isDefault;
-    _setDef.hidden = selectMode || addr.isDefault;
+    BOOL hideSetDef = selectMode || addr.isDefault;
+    BOOL hideDelete = selectMode || addr.isDefault;
+    _setDef.hidden = hideSetDef;
+    _delBtn.hidden = hideDelete;
+    _actionsRow.hidden = hideSetDef && hideDelete;
     self.accessoryType = selectMode ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator;
 }
 
@@ -1131,6 +1167,15 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
         __strong typeof(ws) s = ws;
         [s.tableView reloadData];
     };
+    c.onDelete = ^{
+        __strong ESAddress *addr = wa;
+        if (!addr) {
+            return;
+        }
+        [ESStore.shared deleteAddress:addr];
+        __strong typeof(ws) s = ws;
+        [s.tableView reloadData];
+    };
     return c;
 }
 
@@ -1149,21 +1194,6 @@ static void ESPresentProductDetailSheet(UIViewController *host, ESProduct *produ
         [s.tableView reloadData];
     };
     [self.navigationController pushViewController:v animated:YES];
-}
-
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (self.onSelect) {
-        return NO;
-    }
-    ESAddress *a = ESStore.shared.addresses[indexPath.row];
-    return !a.isDefault;
-}
-
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)s forRowAtIndexPath:(NSIndexPath *)i {
-    if (s == UITableViewCellEditingStyleDelete) {
-        [ESStore.shared deleteAddress:ESStore.shared.addresses[i.row]];
-        [self.tableView reloadData];
-    }
 }
 
 @end
