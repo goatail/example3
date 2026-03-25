@@ -124,10 +124,10 @@ static UIButton *ESAuthPrimaryButton(NSString *title) {
 @property (nonatomic, strong) UIRefreshControl *cartRefresh;
 @end
 
-@interface ESCheckoutViewController ()
+@interface ESCheckoutViewController () <UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong, nullable) ESAddress *selected;
-@property (nonatomic, strong) UIView *submitFooter;
-/// 底部「提交订单」按钮（用 frame 布局，避免 tableFooterView 与 Auto Layout 混用触发约束异常）
+@property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) UIView *bottomBar;
 @property (nonatomic, strong) UIButton *submitOrderButton;
 @end
 
@@ -2414,43 +2414,58 @@ static double ESCheckoutShippingFee(void) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.view.backgroundColor = ESBackgroundColor();
     self.title = @"结算";
     self.selected = ESStore.shared.defaultAddress;
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"返回" style:UIBarButtonItemStylePlain target:self action:@selector(es_back)];
 
-    self.submitFooter = [UIView new];
-    self.submitFooter.backgroundColor = ESBackgroundColor();
-    UIButton *submit = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:ESGroupedInsetStyle()];
+    self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.tableView.dataSource = self;
+    self.tableView.delegate = self;
+    self.tableView.backgroundColor = ESBackgroundColor();
+    self.tableView.estimatedRowHeight = 56;
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    [self.view addSubview:self.tableView];
+
+    self.bottomBar = [UIView new];
+    self.bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
+    if (@available(iOS 13.0, *)) {
+        self.bottomBar.backgroundColor = UIColor.systemBackgroundColor;
+    } else {
+        self.bottomBar.backgroundColor = UIColor.whiteColor;
+    }
+
+    UIButton *submit = [UIButton buttonWithType:UIButtonTypeCustom];
     self.submitOrderButton = submit;
+    submit.translatesAutoresizingMaskIntoConstraints = NO;
     [submit setTitle:@"提交订单" forState:UIControlStateNormal];
     [submit setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    submit.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     submit.backgroundColor = ESAuthPrimaryColor();
     submit.layer.cornerRadius = 12;
     submit.layer.masksToBounds = YES;
     [submit addTarget:self action:@selector(onSubmit) forControlEvents:UIControlEventTouchUpInside];
-    [self.submitFooter addSubview:submit];
-    self.tableView.tableFooterView = self.submitFooter;
-    self.tableView.estimatedRowHeight = 56;
-    self.tableView.rowHeight = UITableViewAutomaticDimension;
-}
+    [self.bottomBar addSubview:submit];
+    [self.view addSubview:self.bottomBar];
 
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    CGFloat w = CGRectGetWidth(self.tableView.bounds);
-    if (w < 1) {
-        return;
-    }
-    const CGFloat footerPad = 16;
-    const CGFloat btnH = 48;
-    CGFloat bottomInset = self.view.safeAreaInsets.bottom;
-    CGFloat fh = footerPad + btnH + footerPad + bottomInset;
-    CGRect f = CGRectMake(0, 0, w, MAX(fh, 88));
-    if (!CGRectEqualToRect(self.submitFooter.frame, f)) {
-        self.submitFooter.frame = f;
-        self.submitOrderButton.frame = CGRectMake(footerPad, footerPad, w - footerPad * 2, btnH);
-        self.tableView.tableFooterView = self.submitFooter;
-    }
+    [NSLayoutConstraint activateConstraints:@[
+        [self.tableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.tableView.bottomAnchor constraintEqualToAnchor:self.bottomBar.topAnchor],
+
+        [self.bottomBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.bottomBar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [submit.topAnchor constraintEqualToAnchor:self.bottomBar.safeAreaLayoutGuide.topAnchor constant:12],
+        [submit.leadingAnchor constraintEqualToAnchor:self.bottomBar.leadingAnchor constant:16],
+        [submit.trailingAnchor constraintEqualToAnchor:self.bottomBar.trailingAnchor constant:-16],
+        [submit.bottomAnchor constraintEqualToAnchor:self.bottomBar.safeAreaLayoutGuide.bottomAnchor constant:-12],
+        [submit.heightAnchor constraintEqualToConstant:48]
+    ]];
 }
 
 - (void)es_back {
@@ -2464,7 +2479,7 @@ static double ESCheckoutShippingFee(void) {
         return;
     }
     if (!self.selected) {
-        UIAlertController *ac = [UIAlertController alertControllerWithTitle:nil message:@"请先添加或选择收货地址后再提交订单" preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertController *ac = [UIAlertController alertControllerWithTitle:@"请选择收货地址" message:@"请先添加或选择收货地址后再提交订单" preferredStyle:UIAlertControllerStyleAlert];
         [ac addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleCancel handler:nil]];
         [self presentViewController:ac animated:YES completion:nil];
         return;
@@ -2841,7 +2856,7 @@ static double ESCheckoutShippingFee(void) {
         ESAlert(self, @"购物车为空");
         return;
     }
-    ESCheckoutViewController *ck = [[ESCheckoutViewController alloc] initWithStyle:ESGroupedInsetStyle()];
+    ESCheckoutViewController *ck = [ESCheckoutViewController new];
     __weak typeof(self) ws = self;
     UINavigationController *wrap = [[UINavigationController alloc] initWithRootViewController:ck];
     __weak UINavigationController *wWrap = wrap;

@@ -57,7 +57,8 @@ void ESAlert(UIViewController *vc, NSString *msg);
 @interface ESFavoriteViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @end
 
-@interface ESCheckoutViewController : UITableViewController
+/// 与 example `CheckoutView` 一致：列表 + 底部安全区内「提交订单」（不用 UITableViewController，避免 tableFooterView 反复布局卡死）
+@interface ESCheckoutViewController : UIViewController
 /// 全屏结算关闭回调（与 example `CheckoutView.onDismiss` 一致）
 @property (nonatomic, copy, nullable) void (^onDismiss)(void);
 @end
