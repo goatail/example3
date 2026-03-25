@@ -83,6 +83,27 @@ static UIView *ESAuthLabeledFieldRow(NSString *title, NSString *placeholder, BOO
     return stack;
 }
 
+/// 电话/数字键盘无 Return 键：顶部工具条「完成」收起键盘
+static void ESAuthAttachKeyboardDoneAccessory(UITextField *tf) {
+    UIToolbar *bar = [[UIToolbar alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(UIScreen.mainScreen.bounds), 44)];
+    bar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    UIBarButtonItem *flex = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+    UIBarButtonItem *done = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:tf action:@selector(resignFirstResponder)];
+    bar.items = @[ flex, done ];
+    tf.inputAccessoryView = bar;
+}
+
+/// 同上，增加「下一步」跳到下一项（用于手机号 → 用户名）
+static void ESAuthAttachKeyboardNextDoneAccessory(UITextField *tf, id target, SEL nextAction) {
+    UIToolbar *bar = [[UIToolbar alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(UIScreen.mainScreen.bounds), 44)];
+    bar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    UIBarButtonItem *flex = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+    UIBarButtonItem *next = [[UIBarButtonItem alloc] initWithTitle:@"下一步" style:UIBarButtonItemStylePlain target:target action:nextAction];
+    UIBarButtonItem *done = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:tf action:@selector(resignFirstResponder)];
+    bar.items = @[ flex, next, done ];
+    tf.inputAccessoryView = bar;
+}
+
 /// 主色实心圆角按钮（对齐 borderedProminent + tint primary）
 static UIButton *ESAuthPrimaryButton(NSString *title) {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -138,6 +159,12 @@ void ESAlert(UIViewController *vc, NSString *msg) {
 }
 
 #pragma mark - Auth
+
+@interface ESRegisterViewController () <UITextFieldDelegate>
+@end
+
+@interface ESLoginViewController () <UITextFieldDelegate>
+@end
 
 @implementation ESRegisterViewController {
     UITextField *_phone;
@@ -341,6 +368,21 @@ void ESAlert(UIViewController *vc, NSString *msg) {
         [mainCol.bottomAnchor constraintEqualToAnchor:content.bottomAnchor constant:-32],
         [mainCol.heightAnchor constraintGreaterThanOrEqualToAnchor:g.heightAnchor multiplier:0.88]
     ]];
+
+    _phone.delegate = self;
+    _user.delegate = self;
+    _pass.delegate = self;
+    _confirm.delegate = self;
+    _verifyInput.delegate = self;
+    _user.returnKeyType = UIReturnKeyNext;
+    _pass.returnKeyType = UIReturnKeyNext;
+    _confirm.returnKeyType = UIReturnKeyNext;
+    _verifyInput.returnKeyType = UIReturnKeyDone;
+    _user.enablesReturnKeyAutomatically = YES;
+    _pass.enablesReturnKeyAutomatically = YES;
+    _confirm.enablesReturnKeyAutomatically = YES;
+    ESAuthAttachKeyboardNextDoneAccessory(_phone, self, @selector(es_authPhoneToolbarNext:));
+    ESAuthAttachKeyboardDoneAccessory(_verifyInput);
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -351,6 +393,35 @@ void ESAlert(UIViewController *vc, NSString *msg) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     _gradient.frame = self.view.bounds;
+}
+
+- (void)es_authPhoneToolbarNext:(id)sender {
+    (void)sender;
+    [_user becomeFirstResponder];
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    if (textField == _user) {
+        [_pass becomeFirstResponder];
+        return NO;
+    }
+    if (textField == _pass) {
+        [_confirm becomeFirstResponder];
+        return NO;
+    }
+    if (textField == _confirm) {
+        [_verifyInput becomeFirstResponder];
+        return NO;
+    }
+    if (textField == _verifyInput) {
+        [textField resignFirstResponder];
+        return NO;
+    }
+    if (textField == _phone) {
+        [_user becomeFirstResponder];
+        return NO;
+    }
+    return YES;
 }
 
 - (void)onBack {
@@ -553,6 +624,13 @@ void ESAlert(UIViewController *vc, NSString *msg) {
         [mainCol.bottomAnchor constraintEqualToAnchor:content.bottomAnchor constant:-32],
         [mainCol.heightAnchor constraintGreaterThanOrEqualToAnchor:g.heightAnchor multiplier:0.9]
     ]];
+
+    _user.delegate = self;
+    _pass.delegate = self;
+    _user.returnKeyType = UIReturnKeyNext;
+    _pass.returnKeyType = UIReturnKeyDone;
+    _user.enablesReturnKeyAutomatically = YES;
+    _pass.enablesReturnKeyAutomatically = YES;
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -563,6 +641,18 @@ void ESAlert(UIViewController *vc, NSString *msg) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     _gradient.frame = self.view.bounds;
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    if (textField == _user) {
+        [_pass becomeFirstResponder];
+        return NO;
+    }
+    if (textField == _pass) {
+        [textField resignFirstResponder];
+        return NO;
+    }
+    return YES;
 }
 
 - (void)onLogin {
