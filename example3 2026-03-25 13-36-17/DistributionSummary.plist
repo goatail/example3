@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>example3.ipa</key>
+	<array>
+		<dict>
+			<key>architectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>buildNumber</key>
+			<string>1</string>
+			<key>certificate</key>
+			<dict>
+				<key>SHA1</key>
+				<string>3CCA118EE212677829A5BD3BC2C6124C0449E34F</string>
+				<key>dateExpires</key>
+				<string>2027/3/25</string>
+				<key>type</key>
+				<string>Cloud Managed Apple Distribution</string>
+			</dict>
+			<key>entitlements</key>
+			<dict>
+				<key>application-identifier</key>
+				<string>DTB6FGJVXP.flywen.top.example</string>
+				<key>com.apple.developer.team-identifier</key>
+				<string>DTB6FGJVXP</string>
+				<key>get-task-allow</key>
+				<false/>
+			</dict>
+			<key>name</key>
+			<string>example3.app</string>
+			<key>profile</key>
+			<dict>
+				<key>UUID</key>
+				<string>989d1b52-ffbb-4e06-93f6-6f40cf548185</string>
+				<key>dateExpires</key>
+				<string>2027/3/25</string>
+				<key>name</key>
+				<string>iOS Team Ad Hoc Provisioning Profile: flywen.top.example</string>
+			</dict>
+			<key>team</key>
+			<dict>
+				<key>id</key>
+				<string>DTB6FGJVXP</string>
+				<key>name</key>
+				<string>Shanghai QualityApp Information Technology Co., Ltd.</string>
+			</dict>
+			<key>versionNumber</key>
+			<string>1.0</string>
+		</dict>
+	</array>
+</dict>
+</plist>
